@@ -34,16 +34,43 @@
 
         /* Layout untuk Desktop & Mobile */
         @media (min-width: 768px) {
-            body {
+            body:not(.force-mobile) {
                 flex-direction: row;
             }
-            #control-panel {
+            body:not(.force-mobile) #control-panel {
                 width: 320px;
                 height: 100vh;
                 border-right: 1px solid var(--border-color);
                 border-bottom: none !important;
                 overflow-y: auto;
             }
+        }
+
+        /* Mode Paksa (Force Modes) */
+        body.force-desktop {
+            flex-direction: row !important;
+            min-width: 800px; /* Memaksa scroll horizontal jika layar kecil */
+        }
+        body.force-desktop #control-panel {
+            width: 320px !important;
+            height: 100vh !important;
+            border-right: 1px solid var(--border-color) !important;
+            border-bottom: none !important;
+            overflow-y: auto !important;
+            flex-shrink: 0;
+        }
+        body.force-mobile {
+            flex-direction: column !important;
+            min-width: 0 !important;
+        }
+        body.force-mobile #control-panel {
+            width: 100% !important;
+            height: 45vh !important;
+            max-height: none !important;
+            border-right: none !important;
+            border-bottom: 1px solid var(--border-color) !important;
+            overflow-y: auto !important;
+            flex-shrink: 0;
         }
 
         #control-panel {
@@ -289,7 +316,10 @@
 
     <!-- Panel Kontrol -->
     <div id="control-panel">
-        <div class="panel-title">Orbit Simulator</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <div class="panel-title" style="margin-bottom: 0;">Orbit Simulator</div>
+            <button id="toggle-view-btn" style="width: auto; padding: 5px 10px; min-height: 0; font-size: 0.8rem; background: rgba(59, 130, 246, 0.2); border: 1px solid var(--accent-color);">💻 Mode</button>
+        </div>
         
         <div class="control-group">
             <label for="planet-select">Pilih Planet (Sistem Tata Surya)</label>
@@ -391,6 +421,7 @@
         
         let timeElapsed = 0; // Waktu simulasi (dalam Tahun Bumi)
         let lastTimestamp = 0;
+        let viewMode = "auto";
         
         // --- 3. REFERENSI DOM ---
         const canvas = document.getElementById('sim-canvas');
@@ -402,6 +433,7 @@
         const resetBtn = document.getElementById('reset-btn');
         const orbitCheckbox = document.getElementById('show-orbit');
         const vectorCheckbox = document.getElementById('show-vector');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
 
         // Overlay Data UI
         const elName = document.getElementById('data-name');
@@ -454,13 +486,44 @@
             orbitCheckbox.addEventListener('change', (e) => showOrbit = e.target.checked);
             vectorCheckbox.addEventListener('change', (e) => showVector = e.target.checked);
 
+            // Toggle View Mode
+            toggleViewBtn.innerHTML = window.innerWidth >= 768 ? "📱 Mode Mobile" : "💻 Mode Desktop";
+            toggleViewBtn.addEventListener('click', () => {
+                if (viewMode === "auto") {
+                    viewMode = window.innerWidth >= 768 ? "mobile" : "desktop";
+                } else if (viewMode === "desktop") {
+                    viewMode = "mobile";
+                } else {
+                    viewMode = "auto";
+                }
+
+                document.body.classList.remove("force-desktop", "force-mobile");
+                
+                if (viewMode === "desktop") {
+                    document.body.classList.add("force-desktop");
+                    toggleViewBtn.innerHTML = "📱 Mode Mobile";
+                } else if (viewMode === "mobile") {
+                    document.body.classList.add("force-mobile");
+                    toggleViewBtn.innerHTML = "⚙️ Mode Auto";
+                } else {
+                    toggleViewBtn.innerHTML = window.innerWidth >= 768 ? "📱 Mode Mobile" : "💻 Mode Desktop";
+                }
+                
+                setTimeout(resizeCanvas, 100);
+            });
+
             // Event Listeners untuk Interaksi Planet & Modal
             canvas.addEventListener('click', handleCanvasClick);
             document.getElementById('close-modal').addEventListener('click', () => {
                 document.getElementById('planet-modal').classList.add('modal-hidden');
             });
 
-            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                if (viewMode === "auto") {
+                    toggleViewBtn.innerHTML = window.innerWidth >= 768 ? "📱 Mode Mobile" : "💻 Mode Desktop";
+                }
+            });
             resizeCanvas();
             generateStars();
 
