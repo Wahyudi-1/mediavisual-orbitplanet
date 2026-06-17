@@ -40,9 +40,11 @@
             body:not(.force-mobile) #control-panel {
                 width: 320px;
                 height: 100vh;
+                max-height: none;
                 border-right: 1px solid var(--border-color);
                 border-bottom: none !important;
                 overflow-y: auto;
+                flex-shrink: 0;
             }
         }
 
@@ -50,10 +52,12 @@
         body.force-desktop {
             flex-direction: row !important;
             min-width: 800px; /* Memaksa scroll horizontal jika layar kecil */
+            overflow-x: auto;
         }
         body.force-desktop #control-panel {
             width: 320px !important;
             height: 100vh !important;
+            max-height: none !important;
             border-right: 1px solid var(--border-color) !important;
             border-bottom: none !important;
             overflow-y: auto !important;
@@ -62,11 +66,12 @@
         body.force-mobile {
             flex-direction: column !important;
             min-width: 0 !important;
+            overflow-x: hidden;
         }
         body.force-mobile #control-panel {
             width: 100% !important;
-            height: 45vh !important;
-            max-height: none !important;
+            height: auto !important;
+            max-height: 45vh !important;
             border-right: none !important;
             border-bottom: 1px solid var(--border-color) !important;
             overflow-y: auto !important;
@@ -82,6 +87,10 @@
             flex-direction: column;
             gap: 15px;
             z-index: 10;
+            /* Batasan optimal default untuk layar mobile */
+            max-height: 45vh;
+            overflow-y: auto;
+            flex-shrink: 0;
         }
 
         .panel-title {
@@ -255,7 +264,7 @@
         }
         @media (max-width: 767px) {
             #mobile-hint { display: block; }
-            #data-overlay {
+            body:not(.force-desktop) #data-overlay {
                 top: auto;
                 bottom: 15px;
                 right: 50%;
@@ -263,6 +272,26 @@
                 width: 90%;
             }
         }
+
+        /* Sinkronisasi Overlay Data dengan Mode Paksa */
+        body.force-mobile #data-overlay {
+            top: auto !important;
+            bottom: 15px !important;
+            right: 50% !important;
+            transform: translateX(50%) !important;
+            width: 90% !important;
+        }
+        body.force-mobile #mobile-hint { display: block !important; }
+
+        body.force-desktop #data-overlay {
+            top: 15px !important;
+            bottom: auto !important;
+            right: 15px !important;
+            transform: none !important;
+            width: auto !important;
+            min-width: 200px !important;
+        }
+        body.force-desktop #mobile-hint { display: none !important; }
 
         /* Modal Info Planet */
         #planet-modal {
