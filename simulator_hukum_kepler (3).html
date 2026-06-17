@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulator Hukum Kepler & Gravitasi Newton</title>
+    <style>
+        :root {
+            --bg-color: #070913;
+            --panel-bg: rgba(20, 25, 45, 0.85);
+            --border-color: #2a3459;
+            --text-color: #e2e8f0;
+            --accent-color: #3b82f6;
+            --accent-hover: #60a5fa;
+            --danger-color: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout untuk Desktop & Mobile */
+        @media (min-width: 768px) {
+            body {
+                flex-direction: row;
+            }
+            #control-panel {
+                width: 320px;
+                height: 100vh;
+                border-right: 1px solid var(--border-color);
+                border-bottom: none !important;
+                overflow-y: auto;
+            }
+        }
+
+        #control-panel {
+            background-color: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        select, input[type="range"], button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.6);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        select {
+            appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            height: 8px;
+            background: var(--border-color);
+            border: none;
+            border-radius: 4px;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px; /* Touch-friendly size */
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+            flex: 2;
+        }
+
+        button.primary:active { background-color: var(--accent-hover); }
+
+        button.danger {
+            background-color: transparent;
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+            flex: 1;
+        }
+
+        button.danger:active { background-color: rgba(239, 68, 68, 0.2); }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-group input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #111424 0%, #050508 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #data-overlay {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(10, 15, 30, 0.7);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            min-width: 200px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 4px;
+        }
+        
+        .data-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .data-label { color: #94a3b8; }
+        .data-value { font-weight: bold; font-family: monospace; color: #60a5fa; }
+        
+        .slider-value-display {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: -5px;
+        }
+
+        /* Instruksi Sentuh untuk Mobile */
+        #mobile-hint {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.1);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        @media (max-width: 767px) {
+            #mobile-hint { display: block; }
+            #data-overlay {
+                top: auto;
+                bottom: 15px;
+                right: 50%;
+                transform: translateX(50%);
+                width: 90%;
+            }
+        }
+
+        /* Modal Info Planet */
+        #planet-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+        #planet-modal.modal-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent-color);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+        #modal-title { margin-bottom: 10px; }
+        .modal-stats {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        .modal-stats div { margin-bottom: 5px; }
+        .modal-stats span { color: #60a5fa; font-family: monospace; font-weight: bold; }
+        #modal-desc { line-height: 1.5; color: #cbd5e1; font-size: 0.95rem; }
+        .close-btn {
+            position: absolute;
+            top: 10px; right: 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+        .close-btn:hover { color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Panel Kontrol -->
+    <div id="control-panel">
+        <div class="panel-title">Orbit Simulator</div>
+        
+        <div class="control-group">
+            <label for="planet-select">Pilih Planet (Sistem Tata Surya)</label>
+            <select id="planet-select">
+                <!-- Pilihan akan diisi via JS -->
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="speed-slider">Skala Kecepatan Waktu</label>
+            <input type="range" id="speed-slider" min="0.1" max="5" step="0.1" value="1">
+            <div class="slider-value-display"><span id="speed-display">1.0</span>x</div>
+        </div>
+
+        <div class="btn-group">
+            <button id="play-btn" class="primary">⏸ Jeda</button>
+            <button id="reset-btn" class="danger">⟲ Reset</button>
+        </div>
+
+        <label class="checkbox-group">
+            <input type="checkbox" id="show-orbit" checked>
+            <span>Tampilkan Garis Orbit</span>
+        </label>
+
+        <label class="checkbox-group">
+            <input type="checkbox" id="show-vector" checked>
+            <span>Tampilkan Vektor Kecepatan (v)</span>
+        </label>
+        
+        <div style="margin-top: auto; font-size: 0.75rem; color: #64748b; text-align: center;">
+            Sesuai dengan Hukum I, II, dan III Kepler. Planet lebih dekat ke Matahari bergerak lebih cepat.
+        </div>
+    </div>
+
+    <!-- Area Simulasi -->
+    <div id="canvas-container">
+        <canvas id="sim-canvas"></canvas>
+        
+        <!-- Overlay Data Real-time -->
+        <div id="data-overlay">
+            <div class="data-row">
+                <span class="data-label">Planet</span>
+                <span class="data-value" id="data-name">-</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Jarak ke Matahari</span>
+                <span class="data-value" id="data-dist">0.00 AU</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Periode Revolusi</span>
+                <span class="data-value" id="data-period">0.00 Thn</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Kecepatan Relatif</span>
+                <span class="data-value" id="data-vel">0.00 km/s</span>
+            </div>
+        </div>
+        
+        <div id="mobile-hint">Amati perubahan kecepatan di Perihelion (Terdekat)</div>
+    </div>
+
+    <!-- Modal Info Planet -->
+    <div id="planet-modal" class="modal-hidden">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h2 id="modal-title">Nama Planet</h2>
+            <div class="modal-stats">
+                <div>Jarak Aktual: <span id="modal-dist">-</span></div>
+                <div>Periode Revolusi: <span id="modal-period">-</span></div>
+                <div>Kecepatan Relatif: <span id="modal-vel">-</span></div>
+                <div>Satelit Alami: <span id="modal-moons">-</span></div>
+            </div>
+            <p id="modal-desc">Deskripsi...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATA ASTRONOMI ---
+        // a = Semi-major axis (AU)
+        // e = Eksentrisitas (Mendekati 0 = lingkaran, > 0 = elips)
+        // T = Periode revolusi (Tahun Bumi). Mematuhi T^2 = a^3
+        const planetsData = [
+            { id: "mercury", name: "Merkurius", a: 0.387, e: 0.2056, T: 0.241, color: "#a8a29e", radius: 4, moons: "Tidak ada", desc: "Planet terkecil dan terdekat dari Matahari. Permukaannya penuh kawah dan mengalami fluktuasi suhu yang ekstrem antara siang dan malam." },
+            { id: "venus", name: "Venus", a: 0.723, e: 0.0067, T: 0.615, color: "#fef08a", radius: 6, moons: "Tidak ada", desc: "Planet terpanas di tata surya dengan atmosfer tebal yang didominasi karbon dioksida. Sering disebut Bintang Kejora." },
+            { id: "earth", name: "Bumi", a: 1.000, e: 0.0167, T: 1.000, color: "#60a5fa", radius: 6.5, moons: "1 (Bulan)", desc: "Satu-satunya planet yang diketahui memiliki kehidupan. Memiliki banyak air dalam wujud cair dan atmosfer penyokong kehidupan." },
+            { id: "mars", name: "Mars", a: 1.524, e: 0.0934, T: 1.881, color: "#f87171", radius: 5, moons: "2 (Phobos & Deimos)", desc: "Dikenal sebagai planet merah karena kandungan besi oksida (karat) di permukaannya. Memiliki gunung berapi tertinggi di tata surya (Olympus Mons)." },
+            { id: "jupiter", name: "Jupiter", a: 5.203, e: 0.0489, T: 11.86, color: "#fdba74", radius: 12, moons: "95 terkonfirmasi", desc: "Planet gas raksasa terbesar di tata surya. Memiliki Bintik Merah Raksasa yang sebenarnya adalah badai raksasa yang telah berlangsung ratusan tahun." },
+            { id: "saturn", name: "Saturnus", a: 9.537, e: 0.0565, T: 29.46, color: "#fde047", radius: 10, moons: "146 terkonfirmasi", desc: "Planet gas raksasa yang paling terkenal dengan sistem cincinnya yang sangat luas dan indah, terbuat dari miliaran serpihan es dan batuan." },
+            { id: "uranus", name: "Uranus", a: 19.191, e: 0.0457, T: 84.01, color: "#7dd3fc", radius: 8, moons: "28 terkonfirmasi", desc: "Planet es raksasa yang sumbu rotasinya sangat miring, sehingga ia tampak seolah-olah menggelinding di sepanjang orbitnya mengitari Matahari." },
+            { id: "neptune", name: "Neptunus", a: 30.069, e: 0.0086, T: 164.8, color: "#3b82f6", radius: 8, moons: "16 terkonfirmasi", desc: "Planet terjauh dari Matahari. Memiliki angin paling kencang di tata surya dan berwarna biru tua karena kandungan gas metana di atmosfernya." }
+        ];
+
+        // --- 2. STATE APLIKASI ---
+        let currentPlanetIdx = 2; // Default Bumi
+        let isPlaying = true;
+        let timeMultiplier = 1;
+        let showOrbit = true;
+        let showVector = true;
+        
+        let timeElapsed = 0; // Waktu simulasi (dalam Tahun Bumi)
+        let lastTimestamp = 0;
+        
+        // --- 3. REFERENSI DOM ---
+        const canvas = document.getElementById('sim-canvas');
+        const ctx = canvas.getContext('2d');
+        const planetSelect = document.getElementById('planet-select');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedDisplay = document.getElementById('speed-display');
+        const playBtn = document.getElementById('play-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const orbitCheckbox = document.getElementById('show-orbit');
+        const vectorCheckbox = document.getElementById('show-vector');
+
+        // Overlay Data UI
+        const elName = document.getElementById('data-name');
+        const elDist = document.getElementById('data-dist');
+        const elPeriod = document.getElementById('data-period');
+        const elVel = document.getElementById('data-vel');
+
+        // Bintang latar belakang
+        const stars = [];
+
+        // --- 4. INISIALISASI & EVENT LISTENER ---
+        function init() {
+            // Tambahkan opsi "Semua Planet"
+            const optAll = document.createElement('option');
+            optAll.value = "all";
+            optAll.textContent = "Semua Planet";
+            if(currentPlanetIdx === "all") optAll.selected = true;
+            planetSelect.appendChild(optAll);
+
+            // Isi dropdown planet
+            planetsData.forEach((p, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = p.name;
+                if(idx === currentPlanetIdx) opt.selected = true;
+                planetSelect.appendChild(opt);
+            });
+
+            // Event Listeners
+            planetSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                currentPlanetIdx = val === "all" ? "all" : parseInt(val);
+                resetSimulation();
+            });
+
+            speedSlider.addEventListener('input', (e) => {
+                timeMultiplier = parseFloat(e.target.value);
+                speedDisplay.textContent = timeMultiplier.toFixed(1);
+            });
+
+            playBtn.addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                playBtn.innerHTML = isPlaying ? "⏸ Jeda" : "▶ Putar";
+                playBtn.style.backgroundColor = isPlaying ? "var(--accent-color)" : "#10b981"; // Hijau saat paused untuk memutar
+                if (isPlaying) lastTimestamp = performance.now();
+            });
+
+            resetBtn.addEventListener('click', resetSimulation);
+
+            orbitCheckbox.addEventListener('change', (e) => showOrbit = e.target.checked);
+            vectorCheckbox.addEventListener('change', (e) => showVector = e.target.checked);
+
+            // Event Listeners untuk Interaksi Planet & Modal
+            canvas.addEventListener('click', handleCanvasClick);
+            document.getElementById('close-modal').addEventListener('click', () => {
+                document.getElementById('planet-modal').classList.add('modal-hidden');
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            generateStars();
+
+            // Mulai loop animasi
+            requestAnimationFrame(gameLoop);
+            updateDataOverlayInitial();
+        }
+
+        function resetSimulation() {
+            timeElapsed = 0;
+            updateDataOverlayInitial();
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        function generateStars() {
+            stars.length = 0; // Clear
+            for(let i=0; i<200; i++) {
+                stars.push({
+                    x: Math.random(), // Relatif 0-1
+                    y: Math.random(),
+                    radius: Math.random() * 1.5,
+                    opacity: Math.random()
+                });
+            }
+        }
+
+        // --- 5. MATEMATIKA GERAK PLANET (HUKUM KEPLER) ---
+        
+        // Memecahkan Persamaan Kepler: M = E - e * sin(E) menggunakan Metode Newton-Raphson
+        function solveKepler(M, e) {
+            let E = M; // Tebakan awal
+            for (let i = 0; i < 10; i++) {
+                let f = E - e * Math.sin(E) - M;
+                let fPrime = 1 - e * Math.cos(E);
+                E = E - f / fPrime;
+            }
+            return E;
+        }
+
+        // --- 6. RENDER LOOP ---
+        function gameLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // dalam detik riil
+            lastTimestamp = timestamp;
+
+            if (isPlaying) {
+                // Kecepatan dasar simulasi: 1 detik riil = 0.2 tahun bumi.
+                // Dikali dengan timeMultiplier dari slider.
+                timeElapsed += deltaTime * 0.2 * timeMultiplier;
+            }
+
+            // Bersihkan kanvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Gambar latar bintang
+            drawStars();
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Skala dinamis dan penentuan planet yang dirender
+            let scale;
+            let planetsToRender = [];
+            let sunRadius = 15;
+
+            if (currentPlanetIdx === "all") {
+                planetsToRender = planetsData;
+                const furthest = planetsData[planetsData.length - 1]; // Neptunus
+                const maxAphelion = furthest.a * (1 + furthest.e);
+                const padding = Math.min(canvas.width, canvas.height) * 0.45; 
+                scale = padding / maxAphelion;
+                sunRadius = 4; // Matahari lebih kecil agar planet dalam terlihat jelas
+            } else {
+                const planet = planetsData[currentPlanetIdx];
+                planetsToRender = [planet];
+                const aphelion = planet.a * (1 + planet.e);
+                const padding = Math.min(canvas.width, canvas.height) * 0.4; 
+                scale = padding / aphelion;
+            }
+
+            // Gambar Matahari (Fokus 1 di pusat 0,0)
+            drawSun(cx, cy, sunRadius);
+
+            planetsToRender.forEach(planet => {
+                // Perhitungan Fisika Posisi Saat Ini
+                const M = (2 * Math.PI / planet.T) * timeElapsed; // Mean Anomaly
+                const E = solveKepler(M, planet.e); // Eccentric Anomaly
+
+                // Posisi (X,Y) dalam satuan Astronomi (AU).
+                // Matahari berada di titik fokus (0,0).
+                const x_au = planet.a * (Math.cos(E) - planet.e);
+                const y_au = planet.a * Math.sqrt(1 - planet.e * planet.e) * Math.sin(E);
+
+                // Konversi ke koordinat layar
+                const px = cx + x_au * scale;
+                const py = cy + y_au * scale;
+
+                // Gambar Lintasan Orbit (Hukum I Kepler)
+                if (showOrbit) {
+                    drawOrbit(cx, cy, planet, scale);
+                }
+
+                // Gambar Planet (Ukuran disesuaikan jika menampilkan semua planet)
+                const radiusVisual = currentPlanetIdx === "all" ? Math.max(2, planet.radius * 0.4) : planet.radius;
+                drawPlanet(px, py, planet, radiusVisual);
+
+                // Simpan posisi layar aktual planet untuk deteksi klik mouse/sentuhan
+                planet.screenX = px;
+                planet.screenY = py;
+                planet.visualRadius = radiusVisual;
+
+                // Gambar Vektor Kecepatan & Hitung Data
+                const stats = calculateAndDrawVectorData(planet, E, x_au, y_au, px, py, scale);
+
+                if (currentPlanetIdx !== "all") {
+                    // Update UI Data Overlay untuk satu planet
+                    elName.textContent = planet.name;
+                    elName.style.color = planet.color;
+                    elDist.textContent = stats.r_au.toFixed(3) + " AU";
+                    elPeriod.textContent = planet.T.toFixed(2) + " Thn";
+                    elVel.textContent = stats.v_kms.toFixed(1) + " km/s";
+                }
+            });
+
+            if (currentPlanetIdx === "all") {
+                elName.textContent = "Sistem Tata Surya";
+                elName.style.color = "#fff";
+                elDist.textContent = "-";
+                elPeriod.textContent = "-";
+                elVel.textContent = "-";
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawStars() {
+            ctx.save();
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x * canvas.width, star.y * canvas.height, star.radius, 0, Math.PI * 2);
+                // Efek kelap-kelip sederhana bergantung waktu
+                const twinkle = Math.sin(Date.now() * 0.002 + star.x * 100) * 0.5 + 0.5;
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity * twinkle})`;
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        function drawSun(cx, cy, sunRadius = 15) {
+            ctx.save();
+            
+            // Cahaya/Glow Matahari
+            const gradient = ctx.createRadialGradient(cx, cy, sunRadius*0.2, cx, cy, sunRadius*4);
+            gradient.addColorStop(0, "rgba(255, 255, 255, 1)");
+            gradient.addColorStop(0.2, "rgba(252, 211, 77, 0.8)");
+            gradient.addColorStop(1, "rgba(245, 158, 11, 0)");
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, sunRadius*4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inti Matahari
+            ctx.fillStyle = "#fde047";
+            ctx.beginPath();
+            ctx.arc(cx, cy, sunRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawOrbit(cx, cy, planet, scale) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            
+            // Gambar orbit dengan sampel 100 titik (0 hingga 2*PI)
+            for (let i = 0; i <= 100; i++) {
+                let E_temp = (i / 100) * Math.PI * 2;
+                let tx_au = planet.a * (Math.cos(E_temp) - planet.e);
+                let ty_au = planet.a * Math.sqrt(1 - planet.e * planet.e) * Math.sin(E_temp);
+                let sx = cx + tx_au * scale;
+                let sy = cy + ty_au * scale;
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawPlanet(px, py, planet, radiusOverride) {
+            ctx.save();
+            const r = radiusOverride || planet.radius;
+            // Efek Glow Planet
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = planet.color;
+            
+            // Inti Planet
+            ctx.fillStyle = planet.color;
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function calculateAndDrawVectorData(planet, E, x_au, y_au, px, py, scale) {
+            // Jarak aktual r dalam AU (Jarak dari titik fokus/Matahari)
+            const r_au = planet.a * (1 - planet.e * Math.cos(E));
+            
+            // Turunan E terhadap waktu (dE/dt)
+            // dM/dt = 2*PI / T.  M = E - e*sin(E) -> dM/dt = (1 - e*cos(E)) * dE/dt
+            const dEdt = (2 * Math.PI / planet.T) / (1 - planet.e * Math.cos(E));
+            
+            // Kecepatan dalam AU/Tahun
+            const vx_au = -planet.a * Math.sin(E) * dEdt;
+            const vy_au = planet.a * Math.sqrt(1 - planet.e * planet.e) * Math.cos(E) * dEdt;
+            
+            // Besar kecepatan V
+            const v_au_year = Math.sqrt(vx_au*vx_au + vy_au*vy_au);
+            
+            // Konversi ke km/s (1 AU/Tahun ~ 4.74 km/s)
+            const v_kms = v_au_year * 4.74372;
+
+            // Simpan data instan untuk keperluan modal
+            planet.currentDist = r_au;
+            planet.currentVel = v_kms;
+
+            // Jika checkbox vektor dicentang, gambar panah
+            if (showVector) {
+                ctx.save();
+                ctx.strokeStyle = "#10b981"; // Hijau Emerald untuk vektor
+                ctx.fillStyle = "#10b981";
+                ctx.lineWidth = 2;
+                
+                // Panjang visual panah di layar.
+                // Diskalakan terbalik terhadap Periode agar panah Neptunus (lambat) tidak terlalu pendek,
+                // dan Merkurius (cepat) tidak sepanjang layar. Kita normalkan berdasarkan kecepatan rata-ratanya.
+                const avgSpeedKms = (2 * Math.PI * planet.a * 4.74372) / planet.T;
+                const visualVectorScale = 50 / avgSpeedKms; // Panjang dasar ~50px
+                
+                const vx_px = vx_au * 4.74372 * visualVectorScale;
+                const vy_px = vy_au * 4.74372 * visualVectorScale;
+                
+                const endX = px + vx_px;
+                const endY = py + vy_px;
+
+                // Garis panah
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+
+                // Kepala panah
+                const angle = Math.atan2(vy_px, vx_px);
+                const headlen = 8;
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.lineTo(endX, endY);
+                ctx.fill();
+                
+                // Label v di dekat panah
+                ctx.font = "12px sans-serif";
+                ctx.fillText("v", endX + 5, endY + 5);
+                ctx.restore();
+            }
+
+            // Kembalikan data untuk digunakan di UI overlay
+            return { r_au, v_kms };
+        }
+
+        function updateDataOverlayInitial() {
+            if (currentPlanetIdx === "all") {
+                elName.textContent = "Sistem Tata Surya";
+                elName.style.color = "#fff";
+                elPeriod.textContent = "-";
+                elDist.textContent = "-";
+                elVel.textContent = "-";
+            } else {
+                const planet = planetsData[currentPlanetIdx];
+                elName.textContent = planet.name;
+                elName.style.color = planet.color;
+                elPeriod.textContent = planet.T.toFixed(2) + " Thn";
+            }
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Hitung posisi kursor relatif terhadap canvas
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let clickedPlanet = null;
+            const planetsToCheck = currentPlanetIdx === "all" ? planetsData : [planetsData[currentPlanetIdx]];
+
+            // Cek jarak klik ke masing-masing planet
+            for (let p of planetsToCheck) {
+                if (p.screenX === undefined) continue;
+                const dx = mouseX - p.screenX;
+                const dy = mouseY - p.screenY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // Radius klik diperlebar (+15 pixel) agar lebih mudah disentuh di HP
+                if (dist <= (p.visualRadius + 15)) {
+                    clickedPlanet = p;
+                    break;
+                }
+            }
+
+            if (clickedPlanet) {
+                showPlanetModal(clickedPlanet);
+            }
+        }
+
+        function showPlanetModal(planet) {
+            document.getElementById('modal-title').textContent = planet.name;
+            document.getElementById('modal-title').style.color = planet.color;
+            document.getElementById('modal-desc').textContent = planet.desc;
+            
+            // Masukkan data aktual ke dalam modal
+            document.getElementById('modal-dist').textContent = (planet.currentDist || planet.a).toFixed(3) + " AU";
+            document.getElementById('modal-period').textContent = planet.T.toFixed(2) + " Tahun Bumi";
+            document.getElementById('modal-vel').textContent = (planet.currentVel || 0).toFixed(1) + " km/s";
+            document.getElementById('modal-moons').textContent = planet.moons;
+
+            document.getElementById('planet-modal').classList.remove('modal-hidden');
+        }
+
+        // Jalankan aplikasi
+        init();
+
+    </script>
+</body>
+</html>
